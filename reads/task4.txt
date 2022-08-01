@@ -1,0 +1,174 @@
+
+---[ Stealing packets with IPTables IPQUEUE and NFQUEUE ]---
+
+An example on using Scapy with DNS:
+   http://www.packetlevel.ch/html/scapy/scapydns.html
+
+---------[ Perl + IPQUEUE ]---------
+
+My previous version of this demo used Perl and IPQUEUE. You can
+skip this section if you haven't used either.
+
+IPQUEUE is an older Netfilter mechanism for stealing packets out of
+the kernel into a userland process,and returning them to the kernel,
+possibly modified by userland code. NFQUEUE is the newer one, which
+I will describe next.
+
+You can interface with it via a C library or Python or Perl.
+
+Have a look at the ipq-test.sh and ipq-test.pl in
+http://www.cs.dartmouth.edu/~sergey/netreads/mitmer.tgz pack of basic MITM
+scripts, including the script that takes care of ARP poisoning.
+
+My script is in Perl, but you can also use Python with QUEUE if you install
+https://woozle.org/~neale/src/ipqueue/ . Note that QUEUE has been
+deprecated in favor of NFQUEUE, although kernels still support it,
+and Perl bindings for QUEUE seem to be more stable than Python's. 
+
+---------[ Python + NFQUEUE ]---------
+
+NFQUEUE is Netfilter's newer mechanism to steal packets from the kernel
+(from any chain, as per the chain diagram in
+http://www.netfilter.org/documentation/HOWTO/netfilter-hacking-HOWTO-3.html#ss3.2)
+and putting them back.
+
+NFQUEUE bindings for Python can be downloaded from https://pypi.python.org/pypi/NetfilterQueue/0.3,
+but you may be better off just using your Linux distribution's package.
+
+The use of Scapy with NFQUEUE (and without it as well) is described here:
+http://danmcinerney.org/reliable-dns-spoofing-with-python-scapy-nfqueue/
+
+Note that this example has a number of typos; start with my scripts in netreads/ .
+
+--------[ 1. Loading NFQUEUE kernel modules ]--------
+
+   First, you need to make sure that the Linux kernel has the right 
+modules loaded:
+
+# modprobe ip_tables
+# modprobe nfnetlink_queue
+
+   You can see with lsmod whether these module are (a) loaded and 
+(b) being currently used by any iptables rule(s). Observe the
+"Used by" column:
+
+# iptables -A OUTPUT -p icmp -d 8.8.8.8 -j NFQUEUE --queue-num 1
+# lsmod 
+Module                  Size  Used by
+xt_NFQUEUE             12544  1 
+iptable_filter         12536  1 
+nfnetlink_queue        17161  0 
+nfnetlink              12906  1 nfnetlink_queue
+ip_tables              22042  1 iptable_filter
+x_tables               19118  3 ip_tables,iptable_filter,xt_NFQUEUE
+<..skipped..>
+
+Now clearing the rule:
+
+# iptables -F OUTPUT
+# lsmod 
+Module                  Size  Used by
+xt_NFQUEUE             12544  0 
+iptable_filter         12536  0 
+nfnetlink_queue        17161  0 
+nfnetlink              12906  1 nfnetlink_queue
+ip_tables              22042  1 iptable_filter
+x_tables               19118  3 ip_tables,iptable_filter,xt_NFQUEUE
+
+The /proc directory will show state of the currently used queues:
+
+cat /proc/net/netfilter/nfnetlink_queue 
+cat /proc/net/netfilter/nf_queue
+cat /proc/net/netfilter/nf_log
+
+When a script is running, you should see one of the queues
+being used (first command) and the address family "2" being
+populated with nfqueue (2nd or 3rd command).
+
+--------[ Installing Python bindings for NFQUEUE ]--------
+
+(The name of the package for your Linux distribution may vary. For example,
+it may be nfqueue-bindings-python. Check with "apt-cache search nfqueue".
+You may also miss examples---in which case, find them online.)
+
+Install the bindings:
+# apt-get install python-nfqueue
+
+$ locate nfqueue | grep python
+/usr/lib/pyshared/python2.6/_nfqueue.so
+/usr/lib/pyshared/python2.7/_nfqueue.so
+/usr/lib/python2.6/dist-packages/_nfqueue.so
+/usr/lib/python2.6/dist-packages/nfqueue.py
+/usr/lib/python2.6/dist-packages/nfqueue.pyc
+/usr/lib/python2.7/dist-packages/_nfqueue.so
+/usr/lib/python2.7/dist-packages/nfqueue.py
+/usr/lib/python2.7/dist-packages/nfqueue.pyc
+/usr/share/doc/python-nfqueue
+/usr/share/doc/python-nfqueue/changelog.Debian.gz
+/usr/share/doc/python-nfqueue/copyright
+/usr/share/doc/python-nfqueue/examples
+/usr/share/doc/python-nfqueue/examples/example.py
+/usr/share/doc/python-nfqueue/examples/nfq_asyncore.py
+/usr/share/doc/python-nfqueue/examples/nfq_dump_pcap.py
+/usr/share/doc/python-nfqueue/examples/rewrite.py
+/usr/share/doc/python-nfqueue/examples/za.py
+
+Have a look at the examples in the above (ignore za.py). 
+
+You will notice the .so libraries above. That's where all the
+real functionality is implemented, in C and using the libnetfilter_queue
+functions that talk to the kernel over nfnetlink sockets. If you are
+interested in how this works, read 
+  https://home.regit.org/netfilter-en/using-nfqueue-and-libnetfilter_queue/
+install the "libnetfilter-queue-dev" package (on Debian), and read the
+C interface definitions in 
+  /usr/include/libnetfilter_queue/libnetfilter_queue.h
+  /usr/include/libnetfilter_queue/linux_nfnetlink_queue.h
+
+--------[ Examples ]--------
+
+In http://www.cs.dartmouth.edu/~sergey/netreads/ you will find 
+two working scripts:
+
+nfq-pass-all_py.txt      -- print and pass all packets from queue #1 
+nfq-drop5th-icmp_py.txt  -- drop every 5th ICMP packet going from a local application to 8.8.8.8
+
+(Note that the call to unbind() before fast_open() causes a segfault on some
+ systems; if that's the case on yours, comment it out. On other systems,
+ this call is actually necessary for fast_open() to succeed and get
+ the packets from the kernel; sadly, these Python bindings appear to
+ be still rather unstable).
+
+The former script has a bunch of comments explaining different quirks
+of the NFQUEUE Python bindings between different versions. Read then carefully
+if these don't seem to work on your machine. You will need to insert
+your own IPTables rule to work with it. Did I mention that I prefer Perl? :)
+
+The latter script inserts a rule into iptables itself, and even cleans up
+after itself, but too enthusiastically -- it will delete ALL rules
+and all user-defined chains! Hack it so that it doesn't bring down
+the entire firewall.
+
+Note that queue numbers must match, and that bind(socket.AF_INET) is
+necessary, otherwise the callbacks are never going to get called
+and the packets stolen from the kernel into the queue(s) won't
+get processed as if they were lost (or dropped).
+
+---------[ Exercises ]---------
+
+Think of how you could use Netfilter's QUEUE or NFQUEUE target to
+write the rules and packet-mangling script for your node to appear
+"invisible" from traceroute. Write and test this script.
+
+Turn off forwarding in your Linux kernel (echo 0 > /proc/sys/net/ipv4/ip_forward).
+Then write a Scapy script that does equivalent packet forwarding. You can
+use it with either sniff() and sendp() (or, even easier, with send(), but
+that would be cheating, because send() would automatically make an Ethernet
+header for your IP packets and select the interface, too).
+
+Implement some form of rewriting DNS responses on a Linux gateway machine
+you control to swap one site for another (say, google.com for bing.com, or
+vice versa). 
+
+
+

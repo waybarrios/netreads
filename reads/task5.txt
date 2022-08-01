@@ -1,0 +1,286 @@
+
+-------[ Understanding IPv6 Neighbor Discovery (ND) ]-------
+
+IPv6, same as IPv4, is a layer 3 protocol that must be carried
+on the wire in a link-layer (layer 2) wrapper. This means that
+the IPv6 must establish mappings between IPv6 addresses and
+MAC addresses in order to make L2 frames. IPv4 users ARP for that.
+
+IPv6 does not use ARP. Instead, it uses ICMPv6 Neighbor Discovery (ND)
+packets to accomplish similar discovery---with a few important
+differences in behavior. For one thing, the IPv6 ND state machine is
+precisely specified, unlike IPv4's ARP-related behavior (which differs
+a lot between systems; e.g., ARP spoofing for some systems is best
+done with ARP requests, for others with ARP replies).
+
+Read about ND in Chapter 5 of "IPv6 for IPv4 Experts" book,
+and in 6.3 and 6.4. A nice picture of the ND state machine is
+http://njetwork.wordpress.com/2014/01/07/ipv6-nd-state-machine/ .
+
+Work through the packet capture of ND in ns-na-ping*.pcap in
+http://www.cs.dartmouth.edu/~sergey/netreads/ipv6/ to see how
+ND works in ARP-like manner.
+
+It is very important to notice that, quite unlike IPv6, the first step
+an IPv6 host takes when it wants to talk to another host---even on the
+same LAN---is to contact the router first, not the other host. The
+router would issue an ICMPv6 Redirect if the other host is on the same
+LAN and can be communicated with directly.
+
+This may seem wasteful, but, should that other host roam away,
+however, the router would still be able to maintain the connection
+with it, and forward packets accordingly. Thus, in IPv6 being on the
+same subnet does not require being on the same LAN, and an IP address
+that looks like your next-door neighbor on the LAN may in fact be half
+way across the world. Figs. 5.17--5.25 explain different aspects of
+this key design decision for IPv6. Make sure you understand them.
+
+Suggested exercise: using your virtual network TAP device, emulate
+an IPv6 neighbor for your machine, and then an IPv6 router for it.
+
+-------[ Getting IPv6 Internet connectivity ]-------
+
+It is time for you to join the IPv6 Internet. In the lab, we have a
+globally routable IPv6 address range specially reserved for your use;
+but how can you reach it from IPv4?
+
+Luckily, there are IPv6 providers that will give you an entire /64
+IPv6 network prefix for free _and_ provide you with a tunnel to it
+from your IPv4 connection. I use Hurricane Electric (HE) Tunnelbroker,
+https://tunnelbroker.net/ . Once you register for a free account, it
+will help you create up to 5 tunnels between your routable IP address
+(you will need to know it, and enter it in the form) HE's and the IPv6
+global network.
+
+Note that if you are do this from your home ISP "your mileage may
+vary" due to NAT or ISP policies---but if you encounter such problems,
+understand them, and successfully resolve them, it will count for
+extra points :) The easiest way, however, is to do the exercises from
+the Sudi wired network, where you get a routable IP address from
+129.170.212.0/22, not a "private" NAT-ed address like Dartmouth Public
+or a home network. Configuring an HE Tunnelbroker IPv6 tunnel with a
+routable IPv4 address is the easiest way to get your IPv6 going.
+
+----------[ NOTE on working from home: Tunnelbroker ]----------
+
+To use a tunnelbroker.net tunnel from a home network, you will likely
+need to configure your NAT box to forward protocol 41 (ipv6-in-ipv4)
+to your laptop or desktop. Be warned that many NAT boxes don't support
+it.
+
+This is how I set up a working HE tunnel on MacOS X behind my home NAT. 
+
+- First, I registered a free tunnel, using my _publicly routable_ IP
+  address, which I looked up using whatismyip.com. Note that this is
+  the address of my router/NAT device, as far as the Internet knows;
+  tunnelbroker pinged it and so accepted it as a valid endpoint IP.
+
+- Second, I changed that public IP address in the example configuration
+  suggested by HE to my _private_ behind-the-NAT address 192.168.1.XX.
+  This reflects the fact that I am behind NAT. (The other IP address,
+  216.66.86.114, is that of a public HE tunnel endpoint.)
+
+ifconfig gif0 create
+ifconfig gif0 tunnel  192.168.1.XX  216.66.86.114
+ifconfig gif0 inet6 2001:470:6c:e02::2 2001:470:6c:e02::1 prefixlen 128
+route -n add -inet6 default 2001:470:6c:e02::1
+
+  At this point, pinging an external IP address like
+  2001:4860:4860::8888 may or may not work. Try it. If it does, then
+  your router's NAT implementation understands IP protocol 41
+  (also called 6-in-4) that tunnelbroker uses for tunneling, and
+  is NAT-ing it for you. You are connected---sniff your connection
+  and see how your ICMPv6 pings look wrapped in IPv4. 
+
+  You can find my captures of tunneled IPv6 traffic in
+  http://www.cs.dartmouth.edu/~sergey/netreads/ipv6/ (gif0.pcap, gif1.pcap).
+
+  But, as it turned out, this did not work for me. I needed an extra
+  step:
+
+- Third, I logged in on my router/NAT device (192.168.1.1) and
+  activated its "Static NAT" feature, which sends all "unsolicited"
+  traffic---i.e., all traffic that reaches the router such that the
+  router doesn't know which internal machine to NAT-translate it
+  to---to my MacOS X machine.
+
+This finally got the traffic flowing:
+
+netreads $ ping6 2001:4860:4860::8888
+PING6(56=40+8+8 bytes) 2001:470:6c:e02::2 --> 2001:4860:4860::8888
+16 bytes from 2001:4860:4860::8888, icmp_seq=0 hlim=56 time=132.279 ms
+16 bytes from 2001:4860:4860::8888, icmp_seq=1 hlim=56 time=131.307 ms
+16 bytes from 2001:4860:4860::8888, icmp_seq=2 hlim=56 time=131.859 ms
+16 bytes from 2001:4860:4860::8888, icmp_seq=3 hlim=56 time=134.557 ms
+16 bytes from 2001:4860:4860::8888, icmp_seq=4 hlim=56 time=132.405 ms
+
+  My router/modem had another feature called "DMZ Host" that was
+  supposed to help, by "sharing" the public IP address of the router
+  with my laptop---but it required reboots and (I suspect) a
+  reconfiguration of my laptop to respond on the "shared" global
+  address. I decided to not do try it, but you can explore what it does
+  if your router has it too.
+
+----------[ NOTE on working from home: Miredo ]----------
+
+If Tunnelbroker doesn't work for you, you can use "miredo" instead,
+for the Teredo tunneling protocol (developed originally by Microsoft
+for working around the NATs). Miredo is available here:
+http://www.pps.univ-paris-diderot.fr/~jch/software/ipv6-connectivity.html
+You will need to understand it well to use it (and watch out for the
+miredo daemon crashing). Miredo will connect over IPv6 to one of the
+Teredo protocol servers; the server will automatically give you a
+dynamic IPv6 address, which will go away once your connection goes
+away. Unlike Tunnelbroker, you won't get a subnet of your own, but
+configuration on Linux is trivial.
+
+A port of Miredo also exists for MacOS X, but "your mileage may
+vary". Here is the story of my attempts to install it on Yosemite,
+with explanations.
+
+------[ begin log ]------
+bash-3.2# port search teredo
+Warning: port definitions are more than two weeks old, consider updating them by running 'port selfupdate'.
+miredo @1.2.2_1 (net)
+    Miredo is an open-source Teredo IPv6 tunneling software
+bash-3.2# port install miredo
+    Warning: port definitions are more than two weeks old, consider updating them by running 'port selfupdate'.
+    --->  Computing dependencies for miredo
+    --->  Cleaning miredo
+    --->  Scanning binaries for linking errors
+    --->  No broken files found.
+bash-3.2# ps ax | grep miredo
+
+[Nothing. Miredo client is not running.]
+
+bash-3.2# miredo -f
+User "miredo": User not found
+
+[Starting it in debug mode (see miredo -h). It exits on error; being a Linux program,
+ miredo client expects a separate user for itself to exist, to drop privige to once
+ it has started. Ask me if you don't understand this design decision.]
+
+[So for now I will run it as my own user.]
+
+bash-3.2# miredo -f -u user
+Nov 16 22:34:27 mymac miredo[47898] <Info>: Starting...
+Nov 16 22:34:27 mymac miredo[47899] <Error>: Tunneling driver error (/dev/tun*): Undefined error: 0
+Nov 16 22:34:27 mymac miredo[47899] <Error>: BSD tunneling interface creation failure
+Nov 16 22:34:27 mymac miredo[47899] <Alert>: Miredo setup failure: Cannot create IPv6 tunnel
+
+[So miredo needs a TUN/TAP device loaded by the kernel to operate. Recall that Apple has
+ disabled loading of unsigned kernel extensions; so we need to work around this. Kill the process, start again]
+
+^CNov 16 22:34:35 mymac miredo[47898] <Notice>: Exiting on signal 2 (Interrupt: 2)
+Nov 16 22:34:35 mymac miredo[47898] <Notice>: Child 47899 exited (code: 1)
+Nov 16 22:34:35 mymac miredo[47898] <Info>: Terminated with error(s).
+
+[Now load a signed version of the TUN driver. Luckily, Tunnelblick's developers paid Apple for
+ the privilege of signing it, and were kind enough to share it. Hence I am loading their signed version.]
+
+bash-3.2# kextutil -d /Applications/Tunnelblick.app/Contents/Resources/tun-signed.kext -b net.tunnelblick.tun
+
+[Now I start the miredo process, and it succeeds.] 
+
+bash-3.2# miredo -f -u user
+Nov 16 22:34:46 mymac miredo[47903] <Info>: Starting...
+Nov 16 22:34:46 mymac miredo[47904] <Notice>: New Teredo address/MTU
+Nov 16 22:34:46 mymac miredo[47904] <Notice>: Teredo pseudo-tunnel started
+Nov 16 22:34:46 mymac miredo[47904] <Info>:  (address: 2001::53aa:64c:2439:ab1:b7a0:89d3, MTU: 1280)
+route: writing to routing socket: not in table
+delete net default: not in table
+add net default: gateway tun0
+Nov 16 22:34:47 mymac miredo[47904] <Debug>: Internal IPv4 address: 192.168.1.45
+Nov 16 22:34:47 mymac miredo[47904] <Debug>:  packet passed to maintenance procedure
+<skipped more>
+
+[Now you don't need -f. I restarted miredo without it, so that it goes into background.]
+
+^CNov 16 22:59:27 mymac miredo[47903] <Notice>: Exiting on signal 2 (Interrupt: 2)
+ifconfig: SIOCIFDESTROY: Invalid argument
+Nov 16 22:59:27 mymac miredo[47903] <Notice>: Child 47904 exited (code: 0)
+Nov 16 22:59:27 mymac miredo[47903] <Info>: Terminated with no error.
+
+[And now I restart it again.]
+
+bash-3.2# miredo -u user
+bash-3.2# ping 2001:4860:4860::8888
+ping: cannot resolve 2001:4860:4860::8888: Unknown host
+
+[Silly me, I need ping6!]
+
+bash-3.2# ping6 2001:4860:4860::8888
+PING6(56=40+8+8 bytes) 2001::53aa:64c:200d:baa:b7a0:89d3 --> 2001:4860:4860::8888
+16 bytes from 2001:4860:4860::8888, icmp_seq=1 hlim=57 time=101.245 ms
+16 bytes from 2001:4860:4860::8888, icmp_seq=2 hlim=57 time=99.653 ms
+^C
+--- 2001:4860:4860::8888 ping6 statistics ---
+3 packets transmitted, 2 packets received, 33.3% packet loss
+round-trip min/avg/max/std-dev = 99.653/100.449/101.245/0.796 ms
+
+[The first few packets are lost, but it's normal. Remember, your Teredo client
+ is a userland process, and so is the server it contacts for you to create the
+ tunnel; initial setup takes its time.]
+
+[But now you should see no packets lost, unless your ISP is quite unreliable.]
+
+bash-3.2# ping6 2001:4860:4860::8888
+PING6(56=40+8+8 bytes) 2001::53aa:64c:200d:baa:b7a0:89d3 --> 2001:4860:4860::8888
+16 bytes from 2001:4860:4860::8888, icmp_seq=0 hlim=57 time=99.107 ms
+16 bytes from 2001:4860:4860::8888, icmp_seq=1 hlim=57 time=100.296 ms
+16 bytes from 2001:4860:4860::8888, icmp_seq=2 hlim=57 time=100.298 ms
+^C
+--- 2001:4860:4860::8888 ping6 statistics ---
+3 packets transmitted, 3 packets received, 0.0% packet loss
+round-trip min/avg/max/std-dev = 99.107/99.900/100.298/0.561 ms
+
+[Finally, let's find out where my tunnel actually goes in IPv6 space.]
+
+bash-3.2# ifconfig tun0
+tun0: flags=8851<UP,POINTOPOINT,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+      inet6 fe80::62f8:1dff:fexx:xxxx%tun0 prefixlen 64 scopeid 0x13
+      inet6 fe80::ffff:ffff:ffff%tun0 prefixlen 64 scopeid 0x13
+      inet6 2001::53aa:64c:200d:baa:b7a0:89d3 prefixlen 128
+      nd6 options=1<PERFORMNUD>
+      open (pid 48077)
+
+[This info tells me both the local-link addresses---derived from my
+MAC address 60:f8:1d:xx:xx:xx, where I changed my actual MAC's three last bytes
+to xx xx xx---and my global IPv6 address assigned by Teredo, starting with 2001:53aa:...]
+
+[So my IPv6 addres created by Teredo is 2001::53aa:64c:200d:baa:b7a0:89d3.
+ It is valid so long as my miredo client process is running, my laptop is
+ connected, and the Teredo server I am connecting to is happy with me/it.]
+
+[To test this, I created a different tunnel from a different machine, with a
+ different IPv6 address. From that system:]
+
+other:/home/sergey# ping6 2001::53aa:64c:200d:baa:b7a0:89d3
+PING 2001::53aa:64c:200d:baa:b7a0:89d3(2001:0:53aa:64c:200d:baa:b7a0:89d3) 56 data bytes
+64 bytes from 2001:0:53aa:64c:200d:baa:b7a0:89d3: icmp_seq=1 ttl=61 time=862 ms
+64 bytes from 2001:0:53aa:64c:200d:baa:b7a0:89d3: icmp_seq=2 ttl=61 time=475 ms
+64 bytes from 2001:0:53aa:64c:200d:baa:b7a0:89d3: icmp_seq=3 ttl=61 time=398 ms
+64 bytes from 2001:0:53aa:64c:200d:baa:b7a0:89d3: icmp_seq=4 ttl=61 time=318 ms
+64 bytes from 2001:0:53aa:64c:200d:baa:b7a0:89d3: icmp_seq=5 ttl=61 time=239 ms
+
+--- 2001::53aa:64c:200d:baa:b7a0:89d3 ping statistics ---
+5 packets transmitted, 5 received, 0% packet loss, time 4000ms
+
+[Yay! I am reachable over IPv6, and I can even send ICMPv6 packets between my
+ machines. Thank you Teredo!]
+
+------[ end log ]------
+
+------[ Exercises ]------
+
+0. Get some kind of IPv6 connectivity.
+
+1. Find out the IPv6 address of  test6.dartmouth.edu  and ping it over IPv6.
+
+2. Send test6.dartmouth.edu an ICMPv6 packet with your name as the payload
+     instead of the standard ping payload.
+
+3. Manipulate the TTL of your ICMPv6 ping packet so that it's just enough
+     to reach  test6.dartmouth.edu  (i.e., one less, and packets would
+     expire before reaching it)
+

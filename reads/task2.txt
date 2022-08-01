@@ -1,0 +1,114 @@
+
+---[ Netfilter and IP routing. ]---
+
+    If you haven't yet, read the Netfilter.org HOWTOs, 
+http://www.netfilter.org/documentation/ . Read the "NAT howto", and 
+understand the concepts of DNAT and SNAT 
+(http://www.netfilter.org/documentation/HOWTO//NAT-HOWTO-6.html#ss6.1) 
+Recall that the NAT examples we've done in class were MASQUERADING, a 
+special case of source NAT (SNAT):
+
+                       Debian
+                    +-----------+                              +--- .100 (Mac)
+  129.170.212.0/22  |           |  192.168.51.0/24             |
+  ------------------|eth2   eth0|---------------- LAN switch --|--- .200
+    gw .212.1       |DHCP    .1 |                              |
+                    +-----------+                              +--- .225
+
+     iptables -t nat -A POSTROUTING -s 192.168.51.0/24 -o eth2 -j MASQUERADE
+
+Don't forget to turn on kernel's forwarding of packets:
+     echo 1 > /proc/sys/net/ipv4/ip_forward
+
+Explore other files in the /proc/sys/net/ipv4/ directory -- all of these
+are variables that affect your kernel's TCP/IP behaviors! Read parts 
+of "man 7 ip" where /sys/net appears; aslo "man 7 tcp". Note that
+"man ip" gives you ip(8) config tool man page instead (see below),
+not ip(7) and tcp(7); you have to ask for section (7) explicitly!
+
+     MASQUERADE is used with dynamic addresses on the globally routable
+interface; should the address change in a DHCP exchange, the NAT would
+still continue working, rewriting to the new address.
+
+     Reminder: turn off NetworkManager and kill its dhclient processes,
+otherwise _nothing_ will work!
+
+     For placement of IPtables hooks, see slides 4--9 of
+http://events.ccc.de/congress/2004/fahrplan/files/319-passive-covert-channels-slides.pdf 
+(all functions in blue boxes are actual function names in the Linux 
+kernel; e.g., arp_rcv() is at http://lxr.free-electrons.com/source/net/ipv4/arp.c#L951
+and so on).
+
+     I tend to use the old-style Linux commands ifconfig and route to 
+configure my networks; however, there is a newer more versatile package
+called IPRoute2, which uses one command "ip" for both. Read about
+it http://www.policyrouting.org/iproute2.doc.html and practice it.
+(Also have a look at http://lartc.org/howto/, Chapter 3) . That's
+what ip(8) man page is for.
+
+     I mentioned the bandwidth management on Linux via queue disciplines.
+See Chapter 9 of http://lartc.org/howto/  (http://lartc.org/howto/lartc.qdisc.html) .
+My favorite is the "Token Bucket Filter".
+
+---------------[ ARP poisoning ]---------------  
+
+    Read about ARP poisoning: http://sid.rstack.org/arp-sk/ . My script for doing
+it with arp-sk and arpspoof tools is in the mitmer.tgz. See the differences between
+how arpspoof, arp-sk, and Scapy's function arpcachepoison(). Use Scapy's arping()
+function.
+
+-----[[ Practice with filtering packets with iptables rules. ]]----
+
+Write rules to filter out TCP RST packets from a TCP connection, then 
+check that they really do get filtered, by producing them with Scapy to
+break an existing SSH connection, and then protect it with your iptables 
+filter (see the SANS Scapy cheat sheet for a simple TCP handshake script).
+
+Learn about the _traceroute_ tool. With Scapy, prepare and send a stream of
+UDP, TCP, ICMP packets that implement that traceroute's functionality;
+then write iptables rules to confuse traceroute.
+
+----[[ Practice: ]]----
+
+Practice with Scapy. I find it that having a cheatsheet like
+http://packetlife.net/media/library/36/scapy.pdf and
+http://www.packetlevel.ch/html/scapy/docs/scapy_sans.pdf
+and peeking at the diagrams in https://nmap.org/book/tcpip-ref.html
+is very handy.
+
+Experiment with routing tables and connectivity. Set up a NAT-ed network
+from scratch between two or more machines (with Network Manager turned off,
+of course). Observe different failures of communication due to incorrect
+routing configuration: absence of a default gateway rule, wrong netmask,
+lack of ARP response.
+
+
+---[ Stealing packets with IPTables IPQUEUE and NFQUEUE ]---
+
+IPQUEUE is an older Netfilter mechanism for stealing packets out of
+the kernel into a userland process (and returning them to the kernel,
+possibly modified by userland code). NFQUEUE is the newer one.
+You can interface with it via a C library or Python or Perl.
+
+Have a look at the ipq-test.sh and ipq-test.pl in
+http://www.cs.dartmouth.edu/~sergey/mitmer.tgz pack of basic MITM scripts.
+
+That script is in Perl, but you can also use Python if you install
+https://woozle.org/~neale/src/ipqueue/ . Note that QUEUE has been
+deprecated in favor of NFQUEUE (although kernels still support it).
+
+Read python-and-nfqueue.txt for more detail.
+
+To use the newer NFQUEUE target with python, use
+https://pypi.python.org/pypi/NetfilterQueue/0.3
+
+Or just use Scapy with NFQUEUE:
+http://danmcinerney.org/reliable-dns-spoofing-with-python-scapy-nfqueue/
+
+Think of how you could use Netfilter's QUEUE or NFQUEUE target to
+write the rules and packet-mangling script for your node to appear
+"invisible" from traceroute.
+
+
+
+

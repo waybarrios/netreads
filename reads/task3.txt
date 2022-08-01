@@ -1,0 +1,141 @@
+
+---[ Practicing networking with just one machine. ]---
+
+You can use my code at http://netfluke.org/ (redirects to github).
+
+Read the pong.py and tcp.py scripts. They make heavy use of
+Scapy to parse and construct packets. You may find the following
+links useful:
+
+"Cheat sheets:"
+  http://media.packetlife.net/media/library/36/scapy.pdf
+  http://www.packetlevel.ch/html/scapy/docs/scapy_sans.pdf
+
+Tutorials:
+  http://wikihead.wordpress.com/2011/01/09/packet-crafting-using-scapy/
+  http://theitgeekchronicles.files.wordpress.com/2012/05/scapyguide1.pdf
+
+I prefer to work with Scapy at command line, trying things out before
+I commit them to a script. Just run scapy without arguments and use
+it to capture real packets.
+
+Note that Scapy's send and receive functions (e.g., sendp() and sr())
+WILL NOT WORK with a TUN/TAP driver. You must use os.read() and
+os.write() instead. Recall that from the kernel's point of view,
+sending a packet out of your virtual TAP interface means queuing it to
+be read by your script that has the TAP device open; whatever your
+script writes to that device the kernel feeds to the same entry point
+for all packets coming in from from the outside networks,
+netif_rx_ni(). So Scapy's sendp() called from your script for your TAP
+interface would cause the script to send packets back to itself, not
+to the kernel, which would be pointless. Don't use these, use
+os.read() instead to get the packets sent by the kernel to your
+emulated LAN, and os.write() to send the responses from your emulated
+hosts back to your kernel (and, hence, via the kernel, to your
+programs such as ping, netcat (nc), browsers, etc.)
+
+-----[ TUN/TAP driver]-----
+
+On either Linux or OS X you will need the TUN/TAP driver. This driver
+creates two kinds of devices: those that deal with IP packets
+_without_ the Ethernet header (TUN) and full Ethernet frames (TAP). We
+will use TAP exclusively, because we are interested in fully emulating
+an Ethernet interface and an Ethernet LAN behind it. TUN is mostly
+useful for building VPNs (e.g., OpenVPN typically uses TUN, not TAP).
+
+On Linux, TUN/TAP is already available in most distributions. Load it
+with "modprobe tun". The actual file lives in
+/lib/modules/<your_kernel_version/kernel/drivers/net/tun.ko
+(See also https://www.kernel.org/doc/Documentation/networking/tuntap.txt)
+
+TUN/TAP works on my Mac, but your mileage may vary --
+especially on newer Macs (see comments in pytap.py on what to do on
+Yosemite and later).  You will need to install the TUN/TAP kernel
+module (or "kernel extension", kext, as Apple calls it).  See
+http://tuntaposx.sourceforge.net/download.xhtm
+Note: loading kexts (and kernel modules) can crash your kernel,
+so save your work before you play with these.
+
+-----[ Virtual LAN configuration ]-----
+
+In my configuration, the scripts create an interface 10.5.0.1 that is
+native to your kernel; so far as the kernel knows, there is a
+10.5.0.0/24 network connected to that interface.  When a script starts
+and registers this interface, this link appears to go up, and all
+packets routed to it will be queued by the TAP driver; the script will
+read then from that queue with os.read(). Any packet the script writes
+into the TAP device with os.write() will appear to the kernel as if
+arrived from that network over that interface, and will be routed or
+given to the local applications as usual. Thus you can emulate a whole
+/24 network full of devices so long as you do your ARP-ing, and the
+rest of the work for those device's TCP/IP stacks.
+
+----[[ Practice: ]]----
+
+Write Scapy scripts to emulate a DNS server on the virtual LAN behind
+the TAP interface. You DNS server should reply to DNS queries with
+meaningful responses. Test it with the "dig" tool (e.g.,
+"dig @10.5.0.53 some-domain-name" to query the DNS server at 10.5.0.53).
+
+The DNS protocol is explained in this tutorial about the famous Kaminsky
+attack on DNS:
+  http://unixwiz.net/techtips/iguide-kaminsky-dns-vuln.html
+
+It explains a lot about the DNS protocol; refer to the RFC 1035, RFC
+1123, and RFC 2181 for complete reference,
+https://en.wikipedia.org/wiki/Domain_Name_System for an overview.
+
+You can implement a scapy DNS server that takes requests, runs them
+against an actual server (say, Google's 8.8.8.8), and then responds to
+the original request (perhaps with some modification---like returning
+Bing's IP address for Google's, or some such).
+
+An example on using Scapy with DNS:
+   http://www.packetlevel.ch/html/scapy/scapydns.html
+
+
+
+
+-----[ Beyond DNS ]-----
+
+On Linux, configure DNAT on your kernel to hand packets arriving over
+your internet connection to different "hosts" on your emulated network
+based on their destination port.
+
+For example, forward any packet to UDP port 53 to 10.5.0.53 , any
+packets to TCP port 80 to 10.5.0.80, and any packets to TCP port 22 to
+10.5.0.22 . Set up some responses for those packets -- for port 53
+(DNS queries), respond with some names, for port 80 with some simple
+fixed HTTP response with a basic webpage.  For port 22 you can try to
+implement the start of the SSH protocol.  This protocol is complex,
+but its first few steps are easy enough (e.g.,
+http://www.slashroot.in/secure-shell-how-does-ssh-work). For example,
+you can try to force a connection to use no encryption. Note that the
+supported ciphers are negotiated in plaintext at the start of an SSH
+connection.
+
+---[ Stealing packets with IPTables IPQUEUE and NFQUEUE ]---
+
+IPQUEUE is an older Netfilter mechanism for stealing packets out of
+the kernel into a userland process (and returning them to the kernel,
+possibly modified by userland code). NFQUEUE is the newer one.
+You can interface with it via a C library or Python or Perl.
+
+Have a look at the ipq-test.sh and ipq-test.pl in
+http://www.cs.dartmouth.edu/~sergey/mitmer.tgz pack of basic MITM scripts.
+
+My script is in Perl, but you can also use Python if you install
+https://woozle.org/~neale/src/ipqueue/ . Note that QUEUE has been
+deprecated in favor of NFQUEUE (although kernels still support it).
+
+To use the newer NFQUEUE target with python, use
+https://pypi.python.org/pypi/NetfilterQueue/0.3
+
+Or just use Scapy with NFQUEUE:
+http://danmcinerney.org/reliable-dns-spoofing-with-python-scapy-nfqueue/
+
+Think of how you could use Netfilter's QUEUE or NFQUEUE target to
+write the rules and packet-mangling script for your node to appear
+"invisible" from traceroute.
+
+

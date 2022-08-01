@@ -1,0 +1,67 @@
+Dear All,
+
+You are receiving this email because you either signed up for a
+reading course/independent study with me this term, or expressed
+interest in such before (sorry if I didn't reply in time!).
+
+My plan for readings this term is hands-on "packet-level" IP
+networking. The goal of this course is to gain fluency with free
+software tools that create, handle, and modify TCP/IP packets.  This
+includes packet sniffers, packer crafting tools, Linux routing and
+forwarding, the IPtables/Netfilter firewall, SNAT & DNAT, and the
+iproute2 package.
+
+We will use "Network Intrusion Detection: An Analyst's Handbook" by
+Stephen Northcutt, Donald McLachlan, and Judy Novak (either 2nd or 3rd
+edition will do). You can buy a used copy from Amazon very cheaply
+(practically for the cost of shipping).
+
+We will also use the following books freely available online:
+
+"How can an internet work and how does the Internet work"
+by Stanislav Shalunov
+http://www.mccme.ru/computers/Shalunov-inet.pdf
+
+"IPv6 for IPv4 Experts", by Yar Tikhiy
+https://sites.google.com/site/yartikhiy/home/ipv6book
+
+A very good reference is the "TCP/IP Guide":
+http://www.tcpipguide.com/free/index.htm 
+
+I will assume you are using a Linux machine on which you have root.
+Mac OS X may work for you, but "your mileage may vary". I use a Mac
+but prefer Linux.
+
+-------------------------------------------------------------------------
+
+1. Read Chapters 1-4 of the Northcutt book. 
+
+   This book uses tcpdump for all of its examples. Install tcpdump and
+get comfortable with its options _and_ its filters (see the man page
+for tcpdump "man tcpdump"). Use it to capture your HTTP session going
+out to some site. Write filters to capture _only_ the traffic you
+are interested in. 
+
+   Also install Wireshark, a GUI packet analyzer. Wireshark and
+tcpdump use the same method of capturing packets, the Libpcap
+library. Wireshark's capture filters are the same as tcpdump's, but
+Wireshark display filters differ; learn to use them as well.
+
+2. Install the tool Scapy http://www.secdev.org/projects/scapy/ 
+and learn to send packets with it. Send ICMP pings to a remote
+computer and capture the response. Send UDP packets to a remote
+computer and capture the response.
+
+3. Read about the ARP protocol and "ARP poisoning" aka "ARP spoofing":
+http://sid.rstack.org/arp-sk/ (skip to "Quick guide of what you can do with ARP")
+
+With Scapy, send some spoofed ARP packets and see if you can confuse
+your friends' machines in a small LAN on an isolated switch.
+DON'T use ARP poisoning on any (repeat, ANY) production networks! 
+If the admins see it, they will be angry with you---and there are both
+free tools (such as arpwatch) and proprietary tools for commercial switches
+that will alert them. Look at the arpwatch C source code if you wonder what
+such code looked like in 1990s-2000s. Now, of course, you can implement
+a similar tool in Scapy's Python in a screenful of code.
+ 
+   

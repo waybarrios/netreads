@@ -1,0 +1,13 @@
+(base) ┌─[uninorte@uninorte-dell] - [/code/nets] - [jue jul 28, 15:38]
+└─[$] <> sudo iptables -L OUTPUT --line-numbers                        
+Chain OUTPUT (policy ACCEPT)
+num  target     prot opt source               destination         
+1    DROP       tcp  --  anywhere             anywhere             tcp flags:FIN,SYN,RST,PSH,ACK,URG/RST,ACK
+(base) ┌─[uninorte@uninorte-dell] - [/code/nets] - [jue jul 28, 15:38]
+└─[$] <> sudo iptables -L INPUT --line-numbers                   
+Chain INPUT (policy ACCEPT)
+num  target     prot opt source               destination         
+1    DROP       tcp  --  anywhere             anywhere             tcp flags:FIN,SYN,RST,PSH,ACK,URG/RST
+2    DROP       tcp  --  anywhere             anywhere             tcp flags:FIN,SYN,RST,PSH,ACK,URG/RST,ACK
+(base) ┌─[uninorte@uninorte-dell] - [/code/nets] - [jue jul 28, 15:39]
+
