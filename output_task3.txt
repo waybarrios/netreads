@@ -1,0 +1,23 @@
+Writting iptables...
+iptables -A INPUT -p udp  --sport 53 -j NFQUEUE --queue-num 1
+Intercepting nfqueue: 1
+Spoofing b'dartmouth.edu' to 10.5.0.53
+------------------------------------------
+Intercepted DNS request for b'dartmouth.edu': IP / UDP / DNS Ans 
+Spoofing DNS response to: IP / UDP / DNS Ans "10.5.0.53" 
+------------------------------------------
+Intercepted DNS request for b'dartmouth.edu': IP / UDP / DNS Ans "129.170.172.43" 
+Spoofing DNS response to: IP / UDP / DNS Ans "10.5.0.53" 
+------------------------------------------
+Intercepted DNS request for b'dartmouth.edu': IP / UDP / DNS Ans 
+Spoofing DNS response to: IP / UDP / DNS Ans "10.5.0.53" 
+------------------------------------------
+Intercepted DNS request for b'dartmouth.edu': IP / UDP / DNS Ans "10.5.0.53" 
+Spoofing DNS response to: IP / UDP / DNS Ans "10.5.0.53" 
+------------------------------------------
+Intercepted DNS request for b'dartmouth.edu': IP / UDP / DNS Ans "10.5.0.53" 
+Spoofing DNS response to: IP / UDP / DNS Ans "10.5.0.53" 
+------------------------------------------
+Restoring iptables...
+iptables --flush
+------------------------------------------

@@ -1,0 +1,19 @@
+
+; <<>> DiG 9.18.1-1ubuntu1.1-Ubuntu <<>> dartmouth.edu
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 13838
+;; flags: qr aa rd; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+;; WARNING: recursion requested but not available
+
+;; QUESTION SECTION:
+;dartmouth.edu.			IN	A
+
+;; ANSWER SECTION:
+dartmouth.edu.		10	IN	A	10.5.0.53
+
+;; Query time: 4 msec
+;; SERVER: 127.0.0.53#53(127.0.0.53) (UDP)
+;; WHEN: Wed Aug 17 22:46:33 -05 2022
+;; MSG SIZE  rcvd: 60
+
