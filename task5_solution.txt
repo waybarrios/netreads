@@ -1,0 +1,20 @@
+PING ipv6.google.com(bg-in-f102.1e100.net (2607:f8b0:4004:c06::66)) 56 data bytes
+64 bytes from bg-in-f102.1e100.net (2607:f8b0:4004:c06::66): icmp_seq=1 ttl=108 time=56.2 ms
+64 bytes from bg-in-f102.1e100.net (2607:f8b0:4004:c06::66): icmp_seq=2 ttl=108 time=55.9 ms
+64 bytes from bg-in-f102.1e100.net (2607:f8b0:4004:c06::66): icmp_seq=3 ttl=108 time=56.0 ms
+64 bytes from bg-in-f102.1e100.net (2607:f8b0:4004:c06::66): icmp_seq=4 ttl=108 time=56.6 ms
+64 bytes from bg-in-f102.1e100.net (2607:f8b0:4004:c06::66): icmp_seq=5 ttl=108 time=55.9 ms
+
+--- ipv6.google.com ping statistics ---
+5 packets transmitted, 5 received, 0% packet loss, time 4006ms
+rtt min/avg/max/mdev = 55.908/56.126/56.642/0.277 ms
+PING facebook.com(edge-star-mini6-shv-02-iad3.facebook.com (2a03:2880:f103:181:face:b00c:0:25de)) 56 data bytes
+64 bytes from edge-star-mini6-shv-02-iad3.facebook.com (2a03:2880:f103:181:face:b00c:0:25de): icmp_seq=1 ttl=51 time=60.0 ms
+64 bytes from edge-star-mini6-shv-02-iad3.facebook.com (2a03:2880:f103:181:face:b00c:0:25de): icmp_seq=2 ttl=51 time=60.2 ms
+64 bytes from edge-star-mini6-shv-02-iad3.facebook.com (2a03:2880:f103:181:face:b00c:0:25de): icmp_seq=3 ttl=51 time=60.1 ms
+64 bytes from edge-star-mini6-shv-02-iad3.facebook.com (2a03:2880:f103:181:face:b00c:0:25de): icmp_seq=4 ttl=51 time=60.3 ms
+64 bytes from edge-star-mini6-shv-02-iad3.facebook.com (2a03:2880:f103:181:face:b00c:0:25de): icmp_seq=5 ttl=51 time=60.3 ms
+
+--- facebook.com ping statistics ---
+5 packets transmitted, 5 received, 0% packet loss, time 4006ms
+rtt min/avg/max/mdev = 60.000/60.167/60.316/0.118 ms
